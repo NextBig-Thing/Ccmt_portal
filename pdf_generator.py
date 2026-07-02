@@ -12,6 +12,7 @@ from reportlab.platypus import (
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 import io
 from datetime import datetime
+from pypdf import PdfReader, PdfWriter
 
 
 BRAND_BLUE   = colors.HexColor("#1a237e")
@@ -39,6 +40,7 @@ def generate_pdf(
     category: str,
     round_name: str,
     result_df,
+    password: str,
 ) -> bytes:
     """Generate a professional PDF report and return as bytes."""
     buffer = io.BytesIO()
@@ -247,4 +249,18 @@ def generate_pdf(
     ))
 
     doc.build(story)
-    return buffer.getvalue()
+    
+    # Encrypt the PDF
+    buffer.seek(0)
+    reader = PdfReader(buffer)
+    writer = PdfWriter()
+    
+    for page in reader.pages:
+        writer.add_page(page)
+        
+    writer.encrypt(password)
+    
+    encrypted_buffer = io.BytesIO()
+    writer.write(encrypted_buffer)
+    
+    return encrypted_buffer.getvalue()
