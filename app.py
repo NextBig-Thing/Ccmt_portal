@@ -152,7 +152,7 @@ if st.sidebar.button("Predict Colleges 🚀", use_container_width=True):
             return ''
             
         display_cols = ["Institute", "Program", "Close_2025", "Close_2024", "Probability", "Chance"]
-        styled_df = results_df[display_cols].style.applymap(highlight_chance, subset=['Chance'])
+        styled_df = results_df[display_cols].style.map(highlight_chance, subset=['Chance'])
         
         st.dataframe(
             styled_df,
