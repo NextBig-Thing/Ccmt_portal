@@ -112,9 +112,14 @@ def generate_pdf(
     story.append(HRFlowable(width="100%", thickness=1, color=BRAND_LIGHT))
     story.append(Spacer(1, 0.2 * cm))
 
+    # Format the round name for display
+    display_round = round_name
+    if "Special Round" in round_name:
+        display_round = "Special Round"
+        
     details = [
         ["GATE Score", str(gate_score), "GATE Paper", gate_paper.split(" - ")[0]],
-        ["Category",   category,         "Round",      round_name],
+        ["Category",   category,         "Round",      display_round],
         ["Report Date", datetime.now().strftime("%d %b %Y, %H:%M"), "Total Colleges", str(len(result_df))],
     ]
     det_table = Table(details, colWidths=[4 * cm, 5 * cm, 4 * cm, 4.7 * cm])
@@ -139,7 +144,8 @@ def generate_pdf(
     story.append(HRFlowable(width="100%", thickness=1, color=BRAND_LIGHT))
     story.append(Spacer(1, 0.2 * cm))
 
-    col_headers = ["#", "Institute", "Program", "Close 2025", "Close 2024", "Prob %", "Chance"]
+    short_round = display_round.replace("Round ", "R").replace("Special Round", "SR").replace("National Spot Round", "NSR")
+    col_headers = ["#", "Institute", "Program", f"2025 ({short_round})", f"2024 ({short_round})", "Prob %", "Chance"]
     table_data = [col_headers]
 
     for rank, row in result_df.iterrows():
