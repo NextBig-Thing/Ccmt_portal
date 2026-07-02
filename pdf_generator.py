@@ -13,6 +13,7 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT
 import io
 from datetime import datetime
 from pypdf import PdfReader, PdfWriter
+import pandas as pd
 
 
 BRAND_BLUE   = colors.HexColor("#1a237e")
@@ -159,8 +160,8 @@ def generate_pdf(
             str(rank),
             inst,
             prog,
-            str(row.get("Close_2025", "N/A")),
-            str(row.get("Close_2024", "N/A")),
+            str(row.get("Close_2025")) if pd.notna(row.get("Close_2025")) else "N/A",
+            str(row.get("Close_2024")) if pd.notna(row.get("Close_2024")) else "N/A",
             f"{row.get('Probability', 0)}%",
             clean_chance,
         ])

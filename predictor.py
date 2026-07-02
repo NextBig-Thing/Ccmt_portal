@@ -318,6 +318,6 @@ def predict(
     # Round display values
     for col in ["Close_2025", "Close_2024", "Weighted_Close", "Probability"]:
         if col in result.columns:
-            result[col] = result[col].apply(lambda x: round(x, 1) if pd.notna(x) else "N/A")
+            result[col] = result[col].apply(lambda x: round(float(x), 1) if pd.notna(x) else np.nan)
 
     return result
