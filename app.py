@@ -183,7 +183,8 @@ if st.sidebar.button("Predict Colleges 🚀", use_container_width=True):
         with col1:
             # PDF Generation
             try:
-                pdf_password = "".join(random.choices(string.digits, k=8))
+                alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+                pdf_password = "".join(random.choices(alphabet, k=16))
                 pdf_bytes = pdf_generator.generate_pdf(
                     gate_score=gate_score,
                     gate_paper=gate_paper,
