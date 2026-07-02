@@ -1,5 +1,7 @@
 # CCMT Admission Predictor 🎓
 
+https://ccmtapp.streamlit.app/
+
 A professional Streamlit web application that predicts M.Tech admission chances based on CCMT 2024 & 2025 cutoff data.
 
 ## Features
