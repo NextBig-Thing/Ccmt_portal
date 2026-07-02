@@ -4,6 +4,8 @@ import predictor
 import pdf_generator
 import io
 import base64
+import random
+import string
 
 st.set_page_config(
     page_title="CCMT Admission Predictor",
@@ -106,6 +108,10 @@ if not selected_programs:
 else:
     selected_programs_filter = selected_programs
 
+st.sidebar.markdown("---")
+top_n_options = [10, 15, 20, 25, 30, 40, 50]
+top_n = st.sidebar.selectbox("Number of Recommendations", options=top_n_options, index=3) # Default to 25
+
 if st.sidebar.button("Predict Colleges 🚀", use_container_width=True):
     with st.spinner("Analyzing past trends..."):
         results_df = predictor.predict(
@@ -115,7 +121,7 @@ if st.sidebar.button("Predict Colleges 🚀", use_container_width=True):
             round_name=round_name,
             selected_programs=selected_programs_filter,
             df=df,
-            top_n=25
+            top_n=top_n
         )
         
     if results_df.empty:
@@ -137,7 +143,7 @@ if st.sidebar.button("Predict Colleges 🚀", use_container_width=True):
         st.markdown("<hr>", unsafe_allow_html=True)
         
         # Display Table
-        st.subheader("🏛️ Top 25 Recommendations")
+        st.subheader(f"🏛️ Top {top_n} Recommendations")
         
         # Style the dataframe for display
         def highlight_chance(val):
@@ -177,14 +183,17 @@ if st.sidebar.button("Predict Colleges 🚀", use_container_width=True):
         with col1:
             # PDF Generation
             try:
+                pdf_password = "".join(random.choices(string.digits, k=8))
                 pdf_bytes = pdf_generator.generate_pdf(
                     gate_score=gate_score,
                     gate_paper=gate_paper,
                     category=category,
                     round_name=round_name,
-                    result_df=results_df
+                    result_df=results_df,
+                    password=pdf_password
                 )
                 b64 = base64.b64encode(pdf_bytes).decode()
+                st.info(f"🔒 PDF Password: **{pdf_password}** (Copy this before downloading)")
                 href = f'<a href="data:application/pdf;base64,{b64}" download="CCMT_Admission_Report.pdf" class="download-btn">📄 Download PDF Report</a>'
                 st.markdown(href, unsafe_allow_html=True)
             except Exception as e:
