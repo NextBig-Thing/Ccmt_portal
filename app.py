@@ -109,8 +109,14 @@ else:
     selected_programs_filter = selected_programs
 
 st.sidebar.markdown("---")
-top_n_options = [10, 15, 20, 25, 30, 40, 50]
-top_n = st.sidebar.selectbox("Number of Recommendations", options=top_n_options, index=3) # Default to 25
+top_n = st.sidebar.number_input(
+    "Number of Recommendations",
+    min_value=1,
+    max_value=None,
+    value=25,
+    step=5,
+    help="Enter any number. Default is 25. You can type any value you want."
+)
 
 if st.sidebar.button("Predict Colleges 🚀", use_container_width=True):
     with st.spinner("Analyzing past trends..."):
@@ -130,15 +136,18 @@ if st.sidebar.button("Predict Colleges 🚀", use_container_width=True):
         st.success(f"Found {len(results_df)} top recommendations for you!")
         
         # Display Metrics
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.markdown(f'<div class="metric-card"><strong>Highest Chance</strong><br><span style="font-size:1.5rem;color:#2e7d32">{results_df["Probability"].max()}%</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="metric-card"><strong>Top Score</strong><br><span style="font-size:1.5rem;color:#2e7d32">{results_df["Probability"].max()}%</span></div>', unsafe_allow_html=True)
         with col2:
             safe_count = sum(results_df["Chance"].str.contains("Safe"))
             st.markdown(f'<div class="metric-card"><strong>Safe Options</strong><br><span style="font-size:1.5rem;color:#1a237e">{safe_count}</span></div>', unsafe_allow_html=True)
         with col3:
             avg_2025 = pd.to_numeric(results_df['Close_2025'], errors='coerce').mean()
             st.markdown(f'<div class="metric-card"><strong>Avg Cutoff (2025)</strong><br><span style="font-size:1.5rem;color:#e65100">{avg_2025:.1f}</span></div>', unsafe_allow_html=True)
+        with col4:
+            nirf_ranked = results_df["NIRF_Bonus"].apply(lambda x: x > 1 if pd.notna(x) else False).sum()
+            st.markdown(f'<div class="metric-card"><strong>NIRF Ranked</strong><br><span style="font-size:1.5rem;color:#6a1b9a">{nirf_ranked}</span></div>', unsafe_allow_html=True)
             
         st.markdown("<hr>", unsafe_allow_html=True)
         
@@ -157,7 +166,7 @@ if st.sidebar.button("Predict Colleges 🚀", use_container_width=True):
                 return 'background-color: #ffebee; color: #b71c1c; font-weight: bold;'
             return ''
             
-        display_cols = ["Institute", "Program", "Close_2025", "Close_2024", "Probability", "Chance"]
+        display_cols = ["Institute", "Program", "Close_2025", "Close_2024", "Probability", "NIRF_Bonus", "Chance"]
         styled_df = results_df[display_cols].style.map(highlight_chance, subset=['Chance'])
         
         st.dataframe(
@@ -170,6 +179,7 @@ if st.sidebar.button("Predict Colleges 🚀", use_container_width=True):
                 "Close_2025": st.column_config.NumberColumn("Closing (2025)"),
                 "Close_2024": st.column_config.NumberColumn("Closing (2024)"),
                 "Probability": st.column_config.NumberColumn("Admission Prob (%)", format="%.1f%%"),
+                "NIRF_Bonus": st.column_config.NumberColumn("NIRF Bonus", help="Prestige bonus based on NIRF 2024 rank. Higher = better ranked institute."),
                 "Chance": st.column_config.TextColumn("Admission Chance"),
             }
         )
