@@ -146,7 +146,10 @@ if st.sidebar.button("Predict Colleges 🚀", use_container_width=True):
             avg_2025 = pd.to_numeric(results_df['Close_2025'], errors='coerce').mean()
             st.markdown(f'<div class="metric-card"><strong>Avg Cutoff (2025)</strong><br><span style="font-size:1.5rem;color:#e65100">{avg_2025:.1f}</span></div>', unsafe_allow_html=True)
         with col4:
-            nirf_ranked = results_df["NIRF_Bonus"].apply(lambda x: x > 1 if pd.notna(x) else False).sum()
+            if "NIRF_Bonus" in results_df.columns:
+                nirf_ranked = results_df["NIRF_Bonus"].apply(lambda x: x > 1 if pd.notna(x) else False).sum()
+            else:
+                nirf_ranked = "N/A"
             st.markdown(f'<div class="metric-card"><strong>NIRF Ranked</strong><br><span style="font-size:1.5rem;color:#6a1b9a">{nirf_ranked}</span></div>', unsafe_allow_html=True)
             
         st.markdown("<hr>", unsafe_allow_html=True)
@@ -166,22 +169,32 @@ if st.sidebar.button("Predict Colleges 🚀", use_container_width=True):
                 return 'background-color: #ffebee; color: #b71c1c; font-weight: bold;'
             return ''
             
-        display_cols = ["Institute", "Program", "Close_2025", "Close_2024", "Probability", "NIRF_Bonus", "Chance"]
+        # Only include NIRF_Bonus column if it exists in results
+        has_nirf = "NIRF_Bonus" in results_df.columns
+        display_cols = ["Institute", "Program", "Close_2025", "Close_2024", "Probability"]
+        if has_nirf:
+            display_cols.append("NIRF_Bonus")
+        display_cols.append("Chance")
         styled_df = results_df[display_cols].style.map(highlight_chance, subset=['Chance'])
         
+        col_config = {
+            "Institute": st.column_config.TextColumn("Institute", width="large"),
+            "Program": st.column_config.TextColumn("Program", width="medium"),
+            "Close_2025": st.column_config.NumberColumn("Closing (2025)"),
+            "Close_2024": st.column_config.NumberColumn("Closing (2024)"),
+            "Probability": st.column_config.NumberColumn("Admission Prob (%)", format="%.1f%%"),
+            "Chance": st.column_config.TextColumn("Admission Chance"),
+        }
+        if has_nirf:
+            col_config["NIRF_Bonus"] = st.column_config.NumberColumn(
+                "NIRF Bonus", help="Prestige bonus based on NIRF 2024 rank. Higher = better ranked institute."
+            )
+
         st.dataframe(
             styled_df,
             use_container_width=True,
             height=600,
-            column_config={
-                "Institute": st.column_config.TextColumn("Institute", width="large"),
-                "Program": st.column_config.TextColumn("Program", width="medium"),
-                "Close_2025": st.column_config.NumberColumn("Closing (2025)"),
-                "Close_2024": st.column_config.NumberColumn("Closing (2024)"),
-                "Probability": st.column_config.NumberColumn("Admission Prob (%)", format="%.1f%%"),
-                "NIRF_Bonus": st.column_config.NumberColumn("NIRF Bonus", help="Prestige bonus based on NIRF 2024 rank. Higher = better ranked institute."),
-                "Chance": st.column_config.TextColumn("Admission Chance"),
-            }
+            column_config=col_config
         )
         
         # Export Options
