@@ -224,6 +224,7 @@ def predict(
     selected_programs: list[str],
     df: pd.DataFrame,
     top_n: int = 25,
+    sort_by: str = "Best Institutes (Highest Cutoff)",
 ) -> pd.DataFrame:
     """
     Returns top_n college recommendations sorted by Admission Probability.
@@ -312,7 +313,14 @@ def predict(
     )
 
     # ── Sort & return top_n ───────────────────────────────────────────────────
-    result = pivot.sort_values("Probability", ascending=False).head(top_n).reset_index(drop=True)
+    if sort_by == "Best Institutes (Highest Cutoff)":
+        realistic = pivot[pivot["Probability"] >= 2.0]
+        if realistic.empty:
+            result = pivot.sort_values("Probability", ascending=False).head(top_n).reset_index(drop=True)
+        else:
+            result = realistic.sort_values("Weighted_Close", ascending=False).head(top_n).reset_index(drop=True)
+    else:
+        result = pivot.sort_values("Probability", ascending=False).head(top_n).reset_index(drop=True)
     result.index = result.index + 1  # 1-based rank
 
     # Round display values
