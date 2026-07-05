@@ -4,6 +4,8 @@ import predictor
 import pdf_generator
 import io
 import base64
+import random
+import string
 
 st.set_page_config(
     page_title="CCMT Admission Predictor",
@@ -106,6 +108,10 @@ if not selected_programs:
 else:
     selected_programs_filter = selected_programs
 
+st.sidebar.markdown("---")
+top_n_options = [10, 15, 20, 25, 30, 40, 50]
+top_n = st.sidebar.selectbox("Number of Recommendations", options=top_n_options, index=3) # Default to 25
+
 if st.sidebar.button("Predict Colleges 🚀", use_container_width=True):
     with st.spinner("Analyzing past trends..."):
         results_df = predictor.predict(
@@ -115,16 +121,13 @@ if st.sidebar.button("Predict Colleges 🚀", use_container_width=True):
             round_name=round_name,
             selected_programs=selected_programs_filter,
             df=df,
-            top_n=25
+            top_n=top_n
         )
         
     if results_df.empty:
-        st.warning("⚠️ No colleges found. Try: selecting a different Round, removing the Program filter, or choosing a broader Category.")
+        st.warning("No colleges found matching your criteria. Try relaxing your program filters or selecting a different round/category.")
     else:
-        if len(results_df) < 5:
-            st.warning(f"⚠️ Only {len(results_df)} college(s) found. **Special Rounds have very limited data.** Try switching to Round 3 or clearing the Program filter to see more results.")
-        else:
-            st.success(f"Found {len(results_df)} recommendations for you!")
+        st.success(f"Found {len(results_df)} top recommendations for you!")
         
         # Display Metrics
         col1, col2, col3 = st.columns(3)
@@ -140,7 +143,7 @@ if st.sidebar.button("Predict Colleges 🚀", use_container_width=True):
         st.markdown("<hr>", unsafe_allow_html=True)
         
         # Display Table
-        st.subheader("🏛️ Top 25 Recommendations")
+        st.subheader(f"🏛️ Top {top_n} Recommendations")
         
         # Style the dataframe for display
         def highlight_chance(val):
@@ -164,10 +167,10 @@ if st.sidebar.button("Predict Colleges 🚀", use_container_width=True):
             column_config={
                 "Institute": st.column_config.TextColumn("Institute", width="large"),
                 "Program": st.column_config.TextColumn("Program", width="medium"),
-                "Close_2025": st.column_config.NumberColumn("Closing 2025", format="%d"),
-                "Close_2024": st.column_config.NumberColumn("Closing 2024", format="%d"),
-                "Probability": st.column_config.NumberColumn("Prob (%)", format="%.1f%%"),
-                "Chance": st.column_config.TextColumn("Chance"),
+                "Close_2025": st.column_config.NumberColumn("Closing (2025)"),
+                "Close_2024": st.column_config.NumberColumn("Closing (2024)"),
+                "Probability": st.column_config.NumberColumn("Admission Prob (%)", format="%.1f%%"),
+                "Chance": st.column_config.TextColumn("Admission Chance"),
             }
         )
         
@@ -180,14 +183,18 @@ if st.sidebar.button("Predict Colleges 🚀", use_container_width=True):
         with col1:
             # PDF Generation
             try:
+                alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+                pdf_password = "".join(random.choices(alphabet, k=16))
                 pdf_bytes = pdf_generator.generate_pdf(
                     gate_score=gate_score,
                     gate_paper=gate_paper,
                     category=category,
                     round_name=round_name,
-                    result_df=results_df
+                    result_df=results_df,
+                    password=pdf_password
                 )
                 b64 = base64.b64encode(pdf_bytes).decode()
+                st.info(f"🔒 PDF Password: **{pdf_password}** (Copy this before downloading)")
                 href = f'<a href="data:application/pdf;base64,{b64}" download="CCMT_Admission_Report.pdf" class="download-btn">📄 Download PDF Report</a>'
                 st.markdown(href, unsafe_allow_html=True)
             except Exception as e:
