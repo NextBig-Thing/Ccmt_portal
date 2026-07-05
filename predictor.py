@@ -10,34 +10,28 @@ from pathlib import Path
 DATA_DIR = Path(__file__).parent / "data"
 
 # ─── GATE Paper → Program keyword mapping ────────────────────────────────────
-# STRICTLY based on CCMT eligibility — each paper can only apply to its domain.
-# CS paper holders CANNOT apply to VLSI, Embedded, Signal Processing (those need EC).
 GATE_PAPER_PROGRAMS = {
     "CS - Computer Science & Information Technology": [
         "computer science", "information technology", "information security",
-        "cyber security", "cyber forensics", "data science", "data analytics",
-        "data engineering", "artificial intelligence", "machine learning",
-        "software engineering", "software technology", "internet of things",
-        "quantum computing", "autonomous systems", "information and cyber",
-        "advanced computing", "high performance computing", "cloud computing",
-        "distributed computing", "human computer", "computer vision",
-        "natural language", "blockchain", "wireless networks and computing",
-        "computing", "network security", "computer network",
+        "cyber security", "data science", "data analytics", "data engineering",
+        "artificial intelligence", "machine learning", "software engineering",
+        "software technology", "network", "internet of things", "iot",
+        "quantum computing", "ic design", "vlsi", "embedded",
+        "wireless", "autonomous systems", "information and cyber",
+        "computing", "human computer", "bioinformatics",
     ],
     "DA - Data Science & Artificial Intelligence": [
         "data science", "artificial intelligence", "machine learning",
         "data analytics", "data engineering", "business analytics",
-        "autonomous systems", "deep learning", "ai and data",
+        "autonomous systems", "deep learning",
     ],
     "EC - Electronics & Communication Engineering": [
         "electronics", "communication", "vlsi", "embedded", "signal processing",
-        "radar", "microwave", "rf ", "photonics", "wireless", "ic design",
-        "nanoelectronics", "microelectronics", "optical", "antenna",
+        "radar", "microwave", "rf", "photonics", "wireless", "ic design",
     ],
     "EE - Electrical Engineering": [
-        "electrical", "power system", "power electronics", "control system",
-        "drives", "energy systems", "smart grid", "electric vehicle",
-        "high voltage", "traction",
+        "electrical", "power", "power electronics", "control", "drives",
+        "energy systems", "smart grid", "electric vehicle",
     ],
     "ME - Mechanical Engineering": [
         "mechanical", "thermal", "manufacturing", "production", "design engineering",
@@ -118,141 +112,6 @@ CHANCE_LABELS = {
     (-10000, -5): ("🔴 Dream",         "#e53935"),
 }
 
-# ─── NIRF 2024 Engineering Rankings ─────────────────────────────────────────
-# Source: NIRF India Rankings 2024 (Engineering)
-# Key: substring that appears in the institute name (lowercase)
-# Value: NIRF rank
-NIRF_RANKINGS = {
-    # Top NITs
-    "national institute of technology, tiruchirappalli": 10,
-    "nit tiruchirappalli": 10,
-    "national institute of technology, warangal": 26,
-    "nit warangal": 26,
-    "national institute of technology karnataka": 27,
-    "nit surathkal": 27,
-    "national institute of technology, calicut": 28,
-    "nit calicut": 28,
-    "national institute of technology, rourkela": 29,
-    "nit rourkela": 29,
-    "visvesvaraya national institute of technology": 33,
-    "vnit nagpur": 33,
-    "sardar vallabhbhai national institute of technology": 36,
-    "svnit surat": 36,
-    "malaviya national institute of technology": 38,
-    "mnit jaipur": 38,
-    "motilal nehru national institute of technology": 43,
-    "mnnit allahabad": 43,
-    "dr. b r ambedkar national institute of technology": 46,
-    "nit jalandhar": 46,
-    "national institute of technology, hamirpur": 52,
-    "nit hamirpur": 52,
-    "national institute of technology, jamshedpur": 54,
-    "nit jamshedpur": 54,
-    "maulana azad national institute of technology": 51,
-    "manit bhopal": 51,
-    "national institute of technology, kurukshetra": 63,
-    "nit kurukshetra": 63,
-    "national institute of technology, durgapur": 59,
-    "nit durgapur": 59,
-    "national institute of technology, silchar": 75,
-    "nit silchar": 75,
-    "national institute of technology, raipur": 84,
-    "nit raipur": 84,
-    "national institute of technology, patna": 88,
-    "nit patna": 88,
-    "national institute of technology delhi": 77,
-    "nit delhi": 77,
-    "national institute of technology, agartala": 101,
-    "nit agartala": 101,
-    "national institute of technology, srinagar": 110,
-    "nit srinagar": 110,
-    "national institute of technology, manipur": 130,
-    "national institute of technology, meghalaya": 135,
-    "national institute of technology, mizoram": 140,
-    "national institute of technology, nagaland": 145,
-    "national institute of technology, sikkim": 148,
-    "national institute of technology, uttarakhand": 150,
-    "national institute of technology, andhra pradesh": 120,
-    "national institute of technology, arunachal pradesh": 138,
-    "national institute of technology, goa": 105,
-    "national institute of technology, puducherry": 115,
-    # IIITs
-    "international institute of information technology, hyderabad": 31,
-    "iiit hyderabad": 31,
-    "international institute of information technology bangalore": 68,
-    "iiit bangalore": 68,
-    "indraprastha institute of information technology": 52,
-    "iiit delhi": 52,
-    "atal bihari vajpayee indian institute of information technology": 82,
-    "abv-iiitm gwalior": 82,
-    "indian institute of information technology, design and manufacturing, jabalpur": 90,
-    "iiitdm jabalpur": 90,
-    "indian institute of information technology design and manufacturing kancheepuram": 95,
-    "iiitdm kancheepuram": 95,
-    "indian institute of information technology, allahabad": 60,
-    "iiit allahabad": 60,
-    "indian institute of information technology, sri city": 100,
-    "indian institute of information technology, vadodara": 98,
-    "indian institute of information technology, lucknow": 105,
-    "indian institute of information technology, dharwad": 108,
-    "indian institute of information technology, kota": 112,
-    "indian institute of information technology, ranchi": 115,
-    "indian institute of information technology, nagpur": 118,
-    "indian institute of information technology, tiruchirappalli": 120,
-    "indian institute of information technology, manipur": 130,
-}
-
-# ─── Score gap cap (don't recommend colleges this far below user's score) ────
-MAX_GAP = 150  # If user score - closing score > MAX_GAP, exclude the college
-
-
-def _get_nirf_bonus(institute_name: str) -> float:
-    """
-    Return NIRF bonus points based on institute NIRF 2024 Engineering rank.
-    Lower rank = higher bonus.
-    """
-    name_lower = institute_name.lower().strip()
-
-    # Try exact substring match against known institutes
-    nirf_rank = None
-    for key, rank in NIRF_RANKINGS.items():
-        if key in name_lower or name_lower in key:
-            nirf_rank = rank
-            break
-
-    # If not found by name, try keyword detection
-    if nirf_rank is None:
-        if "national institute of technology" in name_lower or " nit " in name_lower:
-            nirf_rank = 155  # unranked NIT default
-        elif "indian institute of information technology" in name_lower or "iiit" in name_lower:
-            nirf_rank = 125  # unranked IIIT default
-
-    if nirf_rank is None:
-        # GFTI or others
-        if any(kw in name_lower for kw in ["iit", "iiser", "iisc", "bits"]):
-            return 18.0
-        if any(kw in name_lower for kw in ["central university", "central institute",
-                                             "school of planning", "nifft", "nifm",
-                                             "defence institute", "diat"]):
-            return 3.0
-        return 1.0  # Other GFTI/smaller institutes
-
-    # Convert rank to bonus
-    if nirf_rank <= 25:
-        return 20.0
-    elif nirf_rank <= 50:
-        return 15.0
-    elif nirf_rank <= 75:
-        return 10.0
-    elif nirf_rank <= 100:
-        return 7.0
-    elif nirf_rank <= 125:
-        return 5.0
-    elif nirf_rank <= 150:
-        return 4.0
-    else:
-        return 3.0  # unranked NIT/IIIT still gets a base bonus
-
 
 # We need a real cache — resolve at module import time when streamlit is available
 try:
@@ -260,7 +119,6 @@ try:
     st_cache = st.cache_data
 except ImportError:
     st_cache = lambda f: f  # noqa: E731
-
 
 @st_cache
 def load_data() -> pd.DataFrame:
@@ -281,111 +139,37 @@ def load_data() -> pd.DataFrame:
     return combined
 
 
+def _st_cache_wrapper(fn):
+    """Lazy import of streamlit.cache_data to avoid import-time dependency."""
+    try:
+        import streamlit as st
+        return st.cache_data(fn)
+    except ImportError:
+        return fn
+
+
+# We need a real cache — resolve at module import time when streamlit is available
+try:
+    import streamlit as st
+    st_cache = st.cache_data
+except ImportError:
+    st_cache = lambda f: f  # noqa: E731
+
+
 def get_gate_papers() -> list[str]:
     return list(GATE_PAPER_PROGRAMS.keys())
 
 
-# ─── Per-paper exclusion keywords ────────────────────────────────────────────
-# If a program name contains ANY of these words it is EXCLUDED for that paper,
-# even if it partially matched an inclusion keyword.
-PAPER_EXCLUSIONS = {
-    "CS": [
-        "signal processing", "embedded", "electronics and communication",
-        "vlsi", "ic design", "microelectronics", "nanoelectronics",
-        "microwave", "radar", "rf and", "photonics", "antenna",
-        "optical communication", "power system", "power electronics",
-        "electrical", "thermal", "mechanical", "manufacturing",
-        "civil", "structural", "transportation", "geotechnical",
-        "chemical", "petroleum", "textile", "mining",
-    ],
-    "DA": [
-        "signal processing", "embedded", "electronics and communication",
-        "vlsi", "ic design", "microelectronics", "nanoelectronics",
-        "microwave", "radar", "photonics", "antenna",
-        "optical communication", "power system", "power electronics",
-        "electrical", "thermal", "mechanical", "manufacturing",
-        "civil", "structural", "transportation", "geotechnical",
-        "chemical", "petroleum", "textile", "mining",
-    ],
-    "EC": [
-        "computer science", "information technology", "information security",
-        "cyber security", "software engineering", "software technology",
-        "power system", "power electronics", "high voltage", "traction",
-        "thermal", "mechanical", "manufacturing", "civil", "structural",
-        "transportation", "geotechnical", "chemical", "petroleum",
-        "textile", "mining",
-    ],
-    "EE": [
-        "computer science", "information technology", "information security",
-        "cyber security", "software engineering", "vlsi", "embedded",
-        "signal processing", "electronics and communication",
-        "microelectronics", "thermal", "mechanical", "manufacturing",
-        "civil", "structural", "transportation", "geotechnical",
-        "chemical", "petroleum", "textile", "mining",
-    ],
-    "ME": [
-        "computer science", "information technology", "cyber security",
-        "software engineering", "vlsi", "embedded", "signal processing",
-        "electronics and communication", "microelectronics",
-        "power system", "high voltage", "civil", "structural",
-        "transportation", "geotechnical", "chemical", "petroleum",
-        "textile", "mining",
-    ],
-    "CE": [
-        "computer science", "information technology", "cyber security",
-        "software engineering", "vlsi", "embedded", "signal processing",
-        "electronics and communication", "microelectronics",
-        "power system", "high voltage", "thermal", "mechanical",
-        "manufacturing", "chemical", "petroleum", "textile", "mining",
-    ],
-    "CH": [
-        "computer science", "information technology", "cyber security",
-        "software engineering", "vlsi", "embedded", "signal processing",
-        "electronics and communication", "power system", "high voltage",
-        "thermal", "mechanical", "manufacturing", "civil", "structural",
-        "transportation", "textile", "mining",
-    ],
-    "IN": [
-        "computer science", "information technology", "cyber security",
-        "software engineering", "vlsi", "electronics and communication",
-        "power system", "thermal", "mechanical", "manufacturing",
-        "civil", "structural", "chemical", "textile", "mining",
-    ],
-    "BT": [
-        "computer science", "information technology", "cyber security",
-        "software engineering", "vlsi", "embedded", "signal processing",
-        "electronics and communication", "power system", "thermal",
-        "mechanical", "manufacturing", "civil", "structural", "chemical",
-        "textile", "mining",
-    ],
-}
-
-
 def get_programs_for_paper(paper: str, df: pd.DataFrame) -> list[str]:
-    """
-    Return distinct program names that match the chosen GATE paper.
-    Applies strict domain exclusion for every paper so cross-domain
-    programs never appear (e.g. VLSI never shows for CS paper).
-    """
+    """Return distinct program names that match the chosen GATE paper."""
     keywords = GATE_PAPER_PROGRAMS.get(paper, [])
     if not keywords:
         return sorted(df["Program"].dropna().unique().tolist())
-
     mask = df["Program_lower"].apply(
         lambda p: any(kw in p for kw in keywords)
     )
-    matched_df = df.loc[mask, "Program"].dropna().unique().tolist()
-
-    # Apply per-paper exclusion list
-    paper_code = paper.split(" - ")[0].strip()  # e.g. "CS", "EC", "EE"
-    exclusions = PAPER_EXCLUSIONS.get(paper_code, [])
-    if exclusions:
-        matched_df = [
-            p for p in matched_df
-            if not any(ex in p.lower() for ex in exclusions)
-        ]
-
-    return sorted(matched_df) if matched_df else sorted(df["Program"].dropna().unique().tolist())
+    matched = df.loc[mask, "Program"].dropna().unique().tolist()
+    return sorted(matched) if matched else sorted(df["Program"].dropna().unique().tolist())
 
 
 def get_categories(df: pd.DataFrame) -> list[str]:
@@ -531,16 +315,9 @@ def predict(
     result = pivot.sort_values("Probability", ascending=False).head(top_n).reset_index(drop=True)
     result.index = result.index + 1  # 1-based rank
 
-    # Closing scores → clean integers (no .000000)
-    for col in ["Close_2025", "Close_2024"]:
+    # Round display values
+    for col in ["Close_2025", "Close_2024", "Weighted_Close", "Probability"]:
         if col in result.columns:
-            result[col] = pd.to_numeric(result[col], errors="coerce").round(0)
-
-    # Probabilities and scores → 1dp floats
-    for col in ["Weighted_Close", "Probability"]:
-        if col in result.columns:
-            result[col] = result[col].apply(
-                lambda x: round(float(x), 1) if pd.notna(x) else float("nan")
-            )
+            result[col] = result[col].apply(lambda x: round(float(x), 1) if pd.notna(x) else np.nan)
 
     return result
