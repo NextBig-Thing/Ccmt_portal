@@ -1,7 +1,6 @@
 """
 CCMT Admission Predictor — Core Engine
 Loads 2024 & 2025 CCMT Master_Data, computes weighted admission probability.
-Includes NIRF 2024 ranking bonus + Score Gap Cap (Option D).
 """
 
 import pandas as pd
@@ -427,104 +426,36 @@ def get_chance_label(diff: float):
 
 
 def compute_probability(diff: float) -> float:
-    """Map score difference to 0–100 probability using sigmoid."""
+    """Map score difference to 0–100 probability."""
+    # Sigmoid-like mapping: diff=0 → ~50%, diff=40 → ~95%, diff=-20 → ~10%
     prob = 100 / (1 + np.exp(-0.1 * diff))
     return round(float(np.clip(prob, 1, 99)), 1)
 
 
-def _build_pivot(filtered):
-    pivot = filtered.pivot_table(
-        index=["Institute", "Program"],
-        columns="Year",
-        values="Closing_Score",
-        aggfunc="min",
-    ).reset_index()
-    pivot.columns.name = None
-    if 2024 in pivot.columns:
-        pivot.rename(columns={2024: "Close_2024"}, inplace=True)
-    else:
-        pivot["Close_2024"] = float("nan")
-    if 2025 in pivot.columns:
-        pivot.rename(columns={2025: "Close_2025"}, inplace=True)
-    else:
-        pivot["Close_2025"] = float("nan")
-    return pivot
-
-
-def _compute_scores(pivot, gate_score, rw):
-    w25, w24 = 0.60, 0.40
-
-    def weighted_close(row):
-        v25 = float(row["Close_2025"]) if pd.notna(row.get("Close_2025")) else None
-        v24 = float(row["Close_2024"]) if pd.notna(row.get("Close_2024")) else None
-        if v25 is not None and v24 is not None:
-            return w25 * v25 + w24 * v24
-        return v25 if v25 is not None else (v24 if v24 is not None else float("nan"))
-
-    pivot["Weighted_Close"] = pivot.apply(weighted_close, axis=1)
-    pivot.dropna(subset=["Weighted_Close"], inplace=True)
-    if pivot.empty:
-        return pivot
-
-    pivot["Score_Diff"] = (gate_score - pivot["Weighted_Close"]) * rw
-    pivot["Probability"] = pivot["Score_Diff"].apply(compute_probability)
-
-    def trend_bonus(row):
-        v25 = row.get("Close_2025")
-        v24 = row.get("Close_2024")
-        if pd.notna(v25) and pd.notna(v24):
-            return min((float(v24) - float(v25)) * 0.05, 5.0)
-        return 0.0
-
-    pivot["Trend_Bonus"] = pivot.apply(trend_bonus, axis=1)
-    pivot["Probability"] = (pivot["Probability"] + pivot["Trend_Bonus"]).clip(1, 99).round(1)
-    pivot["NIRF_Bonus"] = pivot["Institute"].apply(_get_nirf_bonus)
-    pivot["Combined_Score"] = (pivot["Probability"] + pivot["NIRF_Bonus"]).clip(1, 115).round(1)
-    pivot[["Chance", "Color"]] = pivot["Score_Diff"].apply(
-        lambda d: pd.Series(get_chance_label(d))
-    )
-    return pivot
-
-
-def _deduplicate(pivot, max_per_institute=2):
-    """
-    Keep top max_per_institute programs per institute ranked by Combined_Score.
-    e.g. NIT Trichy shows CS + AI, not just CS.
-    Prevents any single institute from flooding the list beyond 2 slots.
-    """
-    pivot_sorted = pivot.sort_values("Combined_Score", ascending=False)
-    pivot_sorted = pivot_sorted.copy()
-    pivot_sorted["_prog_rank"] = pivot_sorted.groupby("Institute").cumcount()
-    result = pivot_sorted[pivot_sorted["_prog_rank"] < max_per_institute].copy()
-    result.drop(columns=["_prog_rank"], inplace=True)
-    return result.reset_index(drop=True)
-
-
 def predict(
-    gate_score,
-    gate_paper,
-    category,
-    round_name,
-    selected_programs,
-    df,
-    top_n=25,
-):
+    gate_score: float,
+    gate_paper: str,
+    category: str,
+    round_name: str,
+    selected_programs: list[str],
+    df: pd.DataFrame,
+    top_n: int = 25,
+) -> pd.DataFrame:
     """
-    Balanced predictor:
-    - Deduplicates: one row per institute (best program)
-    - Safe Zone (75% slots): user score >= cutoff, gap <= 150 pts
-    - Dream Zone (25% slots): user score < cutoff, only NIRF-ranked institutes
+    Returns top_n college recommendations sorted by Admission Probability.
     """
-    # Filter
+    # ── Filter by category & round ─────────────────────────────────────────
     filtered = df[
         (df["Category"] == category) &
         (df["Round"] == round_name)
     ].copy()
 
+    # ── Filter by selected programs ─────────────────────────────────────────
     if selected_programs:
         filtered = filtered[filtered["Program"].isin(selected_programs)]
 
     if filtered.empty:
+        # Fallback: relax round filter
         filtered = df[df["Category"] == category].copy()
         if selected_programs:
             filtered = filtered[filtered["Program"].isin(selected_programs)]
@@ -532,45 +463,81 @@ def predict(
     if filtered.empty:
         return pd.DataFrame()
 
-    rw = _round_weight(round_name)
-    pivot = _build_pivot(filtered)
-    pivot = _compute_scores(pivot, gate_score, rw)
+    # ── Pivot: one row per Institute+Program, columns = year closing scores ─
+    pivot = filtered.pivot_table(
+        index=["Institute", "Program"],
+        columns="Year",
+        values="Closing_Score",
+        aggfunc="min",   # use best (lowest) closing score per combo
+    ).reset_index()
+    pivot.columns.name = None
+
+    has_2024 = 2024 in pivot.columns
+    has_2025 = 2025 in pivot.columns
+
+    if has_2024:
+        pivot.rename(columns={2024: "Close_2024"}, inplace=True)
+    else:
+        pivot["Close_2024"] = np.nan
+
+    if has_2025:
+        pivot.rename(columns={2025: "Close_2025"}, inplace=True)
+    else:
+        pivot["Close_2025"] = np.nan
+
+    # ── Weighted closing score (2025 = 60%, 2024 = 40%) ─────────────────────
+    w25, w24 = 0.60, 0.40
+
+    def weighted_close(row):
+        v25, v24 = row.get("Close_2025"), row.get("Close_2024")
+        v25 = float(v25) if pd.notna(v25) else None
+        v24 = float(v24) if pd.notna(v24) else None
+        if v25 is not None and v24 is not None:
+            return w25 * v25 + w24 * v24
+        return v25 if v25 is not None else (v24 if v24 is not None else np.nan)
+
+    pivot["Weighted_Close"] = pivot.apply(weighted_close, axis=1)
+    pivot.dropna(subset=["Weighted_Close"], inplace=True)
 
     if pivot.empty:
         return pd.DataFrame()
 
-    # Deduplicate: one best program per institute
-    pivot = _deduplicate(pivot)
+    # ── Round weight multiplier ───────────────────────────────────────────────
+    rw = _round_weight(round_name)
 
-    raw_gap = gate_score - pivot["Weighted_Close"]
+    # ── Score difference and probability ─────────────────────────────────────
+    pivot["Score_Diff"] = gate_score - pivot["Weighted_Close"]
+    pivot["Score_Diff"] = pivot["Score_Diff"] * rw  # dampen by round
+    pivot["Probability"] = pivot["Score_Diff"].apply(compute_probability)
 
-    # Safe pool: realistic admission, gap within 150 pts
-    safe_pool = pivot[(raw_gap >= 0) & (raw_gap <= MAX_GAP)].sort_values(
-        "Combined_Score", ascending=False
+    # ── Trend bonus: if 2025 cutoff < 2024, trend is falling → safer ─────────
+    def trend_bonus(row):
+        v25 = row.get("Close_2025")
+        v24 = row.get("Close_2024")
+        if pd.notna(v25) and pd.notna(v24):
+            diff = float(v24) - float(v25)  # positive if cutoff dropped (easier)
+            return min(diff * 0.05, 5.0)   # cap bonus at +5%
+        return 0.0
+
+    pivot["Trend_Bonus"] = pivot.apply(trend_bonus, axis=1)
+    pivot["Probability"] = (pivot["Probability"] + pivot["Trend_Bonus"]).clip(1, 99).round(1)
+
+    # ── Admission chance label ────────────────────────────────────────────────
+    pivot[["Chance", "Color"]] = pivot["Score_Diff"].apply(
+        lambda d: pd.Series(get_chance_label(d))
     )
-    # Relax if too few
-    if len(safe_pool) < 3:
-        safe_pool = pivot[raw_gap >= 0].sort_values("Combined_Score", ascending=False)
 
-    # Dream pool: above user score, only ranked NITs/IIITs (NIRF bonus >= 4)
-    dream_pool = pivot[(raw_gap < 0) & (pivot["NIRF_Bonus"] >= 4)].sort_values(
-        "NIRF_Bonus", ascending=False
-    )
+    # ── Sort & return top_n ───────────────────────────────────────────────────
+    result = pivot.sort_values("Probability", ascending=False).head(top_n).reset_index(drop=True)
+    result.index = result.index + 1  # 1-based rank
 
-    # Slot allocation: 75% safe, 25% dream
-    dream_slots = max(1, round(top_n * 0.25))
-    safe_slots = top_n - dream_slots
+    # Closing scores → clean integers (no .000000)
+    for col in ["Close_2025", "Close_2024"]:
+        if col in result.columns:
+            result[col] = pd.to_numeric(result[col], errors="coerce").round(0)
 
-    safe_picks = safe_pool.head(safe_slots)
-    dream_picks = dream_pool.head(dream_slots)
-
-    # Drop duplicates on Institute+Program (not just Institute)
-    # Same institute can appear in both safe and dream with different programs
-    result = pd.concat([safe_picks, dream_picks]).drop_duplicates(subset=["Institute", "Program"])
-    result = result.head(top_n).reset_index(drop=True)
-    result.index = result.index + 1
-
-    for col in ["Close_2025", "Close_2024", "Weighted_Close", "Probability", "Combined_Score"]:
+    # Probabilities and scores → 1dp floats
+    for col in ["Weighted_Close", "Probability"]:
         if col in result.columns:
             result[col] = result[col].apply(
                 lambda x: round(float(x), 1) if pd.notna(x) else float("nan")

@@ -4,8 +4,6 @@ import predictor
 import pdf_generator
 import io
 import base64
-import random
-import string
 
 st.set_page_config(
     page_title="CCMT Admission Predictor",
@@ -108,16 +106,6 @@ if not selected_programs:
 else:
     selected_programs_filter = selected_programs
 
-st.sidebar.markdown("---")
-top_n = st.sidebar.number_input(
-    "Number of Recommendations",
-    min_value=1,
-    max_value=None,
-    value=25,
-    step=5,
-    help="Enter any number. Default is 25. You can type any value you want."
-)
-
 if st.sidebar.button("Predict Colleges 🚀", use_container_width=True):
     with st.spinner("Analyzing past trends..."):
         results_df = predictor.predict(
@@ -127,35 +115,32 @@ if st.sidebar.button("Predict Colleges 🚀", use_container_width=True):
             round_name=round_name,
             selected_programs=selected_programs_filter,
             df=df,
-            top_n=top_n
+            top_n=25
         )
         
     if results_df.empty:
-        st.warning("No colleges found matching your criteria. Try relaxing your program filters or selecting a different round/category.")
+        st.warning("⚠️ No colleges found. Try: selecting a different Round, removing the Program filter, or choosing a broader Category.")
     else:
-        st.success(f"Found {len(results_df)} top recommendations for you!")
+        if len(results_df) < 5:
+            st.warning(f"⚠️ Only {len(results_df)} college(s) found. **Special Rounds have very limited data.** Try switching to Round 3 or clearing the Program filter to see more results.")
+        else:
+            st.success(f"Found {len(results_df)} recommendations for you!")
         
         # Display Metrics
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3 = st.columns(3)
         with col1:
-            st.markdown(f'<div class="metric-card"><strong>Top Score</strong><br><span style="font-size:1.5rem;color:#2e7d32">{results_df["Probability"].max()}%</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="metric-card"><strong>Highest Chance</strong><br><span style="font-size:1.5rem;color:#2e7d32">{results_df["Probability"].max()}%</span></div>', unsafe_allow_html=True)
         with col2:
             safe_count = sum(results_df["Chance"].str.contains("Safe"))
             st.markdown(f'<div class="metric-card"><strong>Safe Options</strong><br><span style="font-size:1.5rem;color:#1a237e">{safe_count}</span></div>', unsafe_allow_html=True)
         with col3:
             avg_2025 = pd.to_numeric(results_df['Close_2025'], errors='coerce').mean()
             st.markdown(f'<div class="metric-card"><strong>Avg Cutoff (2025)</strong><br><span style="font-size:1.5rem;color:#e65100">{avg_2025:.1f}</span></div>', unsafe_allow_html=True)
-        with col4:
-            if "NIRF_Bonus" in results_df.columns:
-                nirf_ranked = results_df["NIRF_Bonus"].apply(lambda x: x > 1 if pd.notna(x) else False).sum()
-            else:
-                nirf_ranked = "N/A"
-            st.markdown(f'<div class="metric-card"><strong>NIRF Ranked</strong><br><span style="font-size:1.5rem;color:#6a1b9a">{nirf_ranked}</span></div>', unsafe_allow_html=True)
             
         st.markdown("<hr>", unsafe_allow_html=True)
         
         # Display Table
-        st.subheader(f"🏛️ Top {top_n} Recommendations")
+        st.subheader("🏛️ Top 25 Recommendations")
         
         # Style the dataframe for display
         def highlight_chance(val):
@@ -169,32 +154,21 @@ if st.sidebar.button("Predict Colleges 🚀", use_container_width=True):
                 return 'background-color: #ffebee; color: #b71c1c; font-weight: bold;'
             return ''
             
-        # Only include NIRF_Bonus column if it exists in results
-        has_nirf = "NIRF_Bonus" in results_df.columns
-        display_cols = ["Institute", "Program", "Close_2025", "Close_2024", "Probability"]
-        if has_nirf:
-            display_cols.append("NIRF_Bonus")
-        display_cols.append("Chance")
-        styled_df = results_df[display_cols].style.map(highlight_chance, subset=['Chance'])
+        display_cols = ["Institute", "Program", "Close_2025", "Close_2024", "Probability", "Chance"]
+        styled_df = results_df[display_cols].style.applymap(highlight_chance, subset=['Chance'])
         
-        col_config = {
-            "Institute": st.column_config.TextColumn("Institute", width="large"),
-            "Program": st.column_config.TextColumn("Program", width="medium"),
-            "Close_2025": st.column_config.NumberColumn("Closing (2025)"),
-            "Close_2024": st.column_config.NumberColumn("Closing (2024)"),
-            "Probability": st.column_config.NumberColumn("Admission Prob (%)", format="%.1f%%"),
-            "Chance": st.column_config.TextColumn("Admission Chance"),
-        }
-        if has_nirf:
-            col_config["NIRF_Bonus"] = st.column_config.NumberColumn(
-                "NIRF Bonus", help="Prestige bonus based on NIRF 2024 rank. Higher = better ranked institute."
-            )
-
         st.dataframe(
             styled_df,
             use_container_width=True,
             height=600,
-            column_config=col_config
+            column_config={
+                "Institute": st.column_config.TextColumn("Institute", width="large"),
+                "Program": st.column_config.TextColumn("Program", width="medium"),
+                "Close_2025": st.column_config.NumberColumn("Closing 2025", format="%d"),
+                "Close_2024": st.column_config.NumberColumn("Closing 2024", format="%d"),
+                "Probability": st.column_config.NumberColumn("Prob (%)", format="%.1f%%"),
+                "Chance": st.column_config.TextColumn("Chance"),
+            }
         )
         
         # Export Options
@@ -206,18 +180,14 @@ if st.sidebar.button("Predict Colleges 🚀", use_container_width=True):
         with col1:
             # PDF Generation
             try:
-                alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
-                pdf_password = "".join(random.choices(alphabet, k=16))
                 pdf_bytes = pdf_generator.generate_pdf(
                     gate_score=gate_score,
                     gate_paper=gate_paper,
                     category=category,
                     round_name=round_name,
-                    result_df=results_df,
-                    password=pdf_password
+                    result_df=results_df
                 )
                 b64 = base64.b64encode(pdf_bytes).decode()
-                st.info(f"🔒 PDF Password: **{pdf_password}** (Copy this before downloading)")
                 href = f'<a href="data:application/pdf;base64,{b64}" download="CCMT_Admission_Report.pdf" class="download-btn">📄 Download PDF Report</a>'
                 st.markdown(href, unsafe_allow_html=True)
             except Exception as e:
