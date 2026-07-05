@@ -109,8 +109,7 @@ else:
     selected_programs_filter = selected_programs
 
 st.sidebar.markdown("---")
-top_n_options = [10, 15, 20, 25, 30, 40, 50]
-top_n = st.sidebar.selectbox("Number of Recommendations", options=top_n_options, index=3) # Default to 25
+top_n = st.sidebar.number_input("Number of Recommendations", min_value=1, max_value=10000, value=25, step=5, help="Increase this to see more recommendations")
 
 if st.sidebar.button("Predict Colleges 🚀", use_container_width=True):
     with st.spinner("Analyzing past trends..."):
