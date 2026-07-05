@@ -109,6 +109,7 @@ else:
     selected_programs_filter = selected_programs
 
 st.sidebar.markdown("---")
+sort_by = st.sidebar.radio("Sort By", options=["Best Institutes (Highest Cutoff)", "Safest Options (Highest Probability)"])
 top_n = st.sidebar.number_input("Number of Recommendations", min_value=1, max_value=10000, value=25, step=5, help="Increase this to see more recommendations")
 
 if st.sidebar.button("Predict Colleges 🚀", use_container_width=True):
@@ -120,7 +121,8 @@ if st.sidebar.button("Predict Colleges 🚀", use_container_width=True):
             round_name=round_name,
             selected_programs=selected_programs_filter,
             df=df,
-            top_n=top_n
+            top_n=top_n,
+            sort_by=sort_by
         )
         
     if results_df.empty:
