@@ -243,9 +243,7 @@ def generate_pdf(
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.lightgrey))
     story.append(Spacer(1, 0.2 * cm))
     story.append(Paragraph(
-        "⚠️  Disclaimer: This report is based on historical CCMT 2024 & 2025 cutoff data. "
-        "Predictions are indicative only. Actual cutoffs may vary. Always verify on the official "
-        "CCMT portal: <b>ccmt.nic.in</b>.",
+        "⚠️  Disclaimer: This report is based on historical CCMT 2024 & 2025 cutoff data. ",
         ParagraphStyle("Disc", parent=styles["Normal"], fontSize=8,
                        textColor=colors.grey, alignment=TA_CENTER)
     ))
